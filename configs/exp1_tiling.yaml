@@ -1,0 +1,31 @@
+# configs/exp1_tiling.yaml
+experiment_name: "exp1_tiling_and_margins"
+
+# ------------------------------------
+# Pipeline 1 Settings (Two-Stage)
+# ------------------------------------
+train_yolo: False                       # Skip YOLO training (reuse weights from exp0)
+train_unet: True
+train_csv: "dataset/train.csv"
+train_img_dir: "dataset/train_images"
+crop_margin: 10                         # ABLATION: Added 10-pixel contextual margin
+unet_batch: 16
+unet_lr: 0.0001
+unet_epochs: 50
+
+# ------------------------------------
+# YOLO Global Settings
+# ------------------------------------
+yolo_model: "yolo11n-seg.pt"
+yolo_data_yaml: "configs/yolo_baseline_data.yaml"
+processed_data_dir: "data/processed"
+epochs: 50
+batch_size: 16
+imgsz: 400
+device: 0
+workers: 4
+optimizer: "AdamW"
+lr0: 0.001
+patience: 15
+val_ratio: 0.2
+seed: 42

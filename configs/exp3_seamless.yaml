@@ -1,0 +1,31 @@
+# configs/exp3_seamless.yaml
+experiment_name: "exp3_seamless_cloning"
+
+# ------------------------------------
+# Pipeline 1 Settings (Two-Stage)
+# ------------------------------------
+train_yolo: True                        # Must retrain detector on synthetic data
+train_unet: True
+train_csv: "data/augmented/train_augmented.csv"  # ABLATION: Uses synthetic RLE labels
+train_img_dir: "data/augmented/images"           # ABLATION: Uses blended images
+crop_margin: 10                         
+unet_batch: 16
+unet_lr: 0.0001
+unet_epochs: 50
+
+# ------------------------------------
+# YOLO Global Settings
+# ------------------------------------
+yolo_model: "yolo11n-seg.pt"
+yolo_data_yaml: "configs/yolo_augmented_data.yaml"
+processed_data_dir: "data/processed_augmented"   # You must run patch_maker.py on the augmented dir
+epochs: 50
+batch_size: 16
+imgsz: 400
+device: 0
+workers: 4
+optimizer: "AdamW"
+lr0: 0.001
+patience: 15
+val_ratio: 0.2
+seed: 42

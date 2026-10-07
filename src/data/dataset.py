@@ -21,19 +21,23 @@ def rle_decode(rle_str, shape=(256, 1600)):
     """
     if pd.isna(rle_str) or not rle_str or rle_str == "":
         return np.zeros(shape, dtype=np.uint8)
+    # no defect --> Mask is full 0s
 
     height, width = shape
     s = rle_str.split()
     starts = np.asarray(s[0::2], dtype=int) - 1
     lengths = np.asarray(s[1::2], dtype=int)
     ends = starts + lengths
+    # save starts, lengths and ends of mask pixels
 
     mask = np.zeros(height * width, dtype=np.uint8)
     for lo, hi in zip(starts, ends):
         mask[lo:hi] = 1
+    # set 1 where there is a mask
 
-    # Severstal indicizza i pixel in ordine Fortran (colonna per colonna)
     return mask.reshape((height, width), order="F")
+    # reshape the mask from a single array to a matrix (W, H) column after column
+    # (Fortran order)
 
 
 class SeverstalDataset(Dataset):
@@ -55,13 +59,12 @@ class SeverstalDataset(Dataset):
         self.transform = transform
         self.is_test = is_test
 
-        # Raggruppamento per immagine univoca
-        # Mantiene tutte le immagini (anche quelle senza righe nel CSV se fornite)
         if "ClassId" in df.columns:
-            # Pivot o raggruppamento per associare a ciascuna ImageId i difetti presenti
+            # grouping by images
             self.image_groups = df.groupby("ImageId")
             self.image_ids = list(self.image_groups.groups.keys())
         else:
+            # images list
             self.image_ids = df["ImageId"].unique().tolist()
             self.image_groups = None
 
@@ -77,6 +80,8 @@ class SeverstalDataset(Dataset):
             raise FileNotFoundError(f"Immagine non trovata: {image_path}")
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
+
+        # TEST -> No assigned defects, no transforms
         if self.is_test:
             if self.transform is not None:
                 augmented = self.transform(image=image)
@@ -85,7 +90,7 @@ class SeverstalDataset(Dataset):
                 image = ToTensorV2()(image=image)["image"]
             return {"image": image, "image_id": image_id}
 
-        # Generazione maschera a 4 canali: canale k corrisponde alla classe k+1
+        # TRAIN -> 4 channels (1 binary mask per defect), transforms
         mask = np.zeros((self.shape[0], self.shape[1], 4), dtype=np.float32)
 
         if self.image_groups is not None and image_id in self.image_groups.groups:
@@ -97,12 +102,12 @@ class SeverstalDataset(Dataset):
                     # Assegna la maschera binaria al canale corrispondente (0-indicizzato)
                     mask[:, :, class_id - 1] = rle_decode(rle_pixels, self.shape)
 
-        # Applicazione trasformazioni coordinate su immagine e maschera
+        # transforms (both for image and masks)
         if self.transform is not None:
             augmented = self.transform(image=image, mask=mask)
             image = augmented["image"]
             mask = augmented["mask"]
-            # Converte la maschera da (H, W, C) a tensore PyTorch (C, H, W)
+
             if not isinstance(mask, torch.Tensor):
                 mask = torch.tensor(mask, dtype=torch.float32).permute(2, 0, 1)
             else:
@@ -120,7 +125,7 @@ class SeverstalDataset(Dataset):
 
 def get_transforms(phase="train"):
     """
-    Restituisce la pipeline di trasformazioni Albumentations per training o validazione.
+    Transforms pipeline for both train and val sets
     """
     if phase == "train":
         return A.Compose([
@@ -128,6 +133,7 @@ def get_transforms(phase="train"):
             A.VerticalFlip(p=0.5),
             A.RandomBrightnessContrast(brightness_limit=0.15, contrast_limit=0.15, p=0.4),
             A.Normalize(
+                # ImageNet statistics (for the unet model used)
                 mean=[0.485, 0.456, 0.406],
                 std=[0.229, 0.224, 0.225]
             ),
@@ -136,6 +142,7 @@ def get_transforms(phase="train"):
     else:
         return A.Compose([
             A.Normalize(
+                # ImageNet statistics
                 mean=[0.485, 0.456, 0.406],
                 std=[0.229, 0.224, 0.225]
             ),

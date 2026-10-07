@@ -1,0 +1,31 @@
+# configs/exp0_baseline.yaml
+experiment_name: "exp0_baseline"
+
+# ------------------------------------
+# Pipeline 1 Settings (Two-Stage)
+# ------------------------------------
+train_yolo: True
+train_unet: True
+train_csv: "dataset/train.csv"          # Original imbalanced labels
+train_img_dir: "dataset/train_images"   # Original raw images
+crop_margin: 0                          # ABLATION: 0 pixel margin (Control)
+unet_batch: 16
+unet_lr: 0.0001
+unet_epochs: 50
+
+# ------------------------------------
+# YOLO Global Settings 
+# ------------------------------------
+yolo_model: "yolo11n-seg.pt"            # Use yolo11n.pt for Pipeline 1, seg for Pipeline 2
+yolo_data_yaml: "configs/yolo_baseline_data.yaml"
+processed_data_dir: "data/processed"    # Standard 400x256 tiled dataset
+epochs: 50
+batch_size: 16
+imgsz: 400                              # Match to patch width
+device: 0                               # GPU ID (0) or 'cpu'
+workers: 4
+optimizer: "AdamW"
+lr0: 0.001
+patience: 15
+val_ratio: 0.2
+seed: 42
